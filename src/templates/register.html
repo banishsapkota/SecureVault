@@ -1,46 +1,77 @@
 {% extends "base.html" %}
+{% block title %}Create account | SecureVault{% endblock %}
+{% block main_class %}auth-main{% endblock %}
 
 {% block content %}
+<div class="auth-shell">
+    {% include "_auth_aside.html" %}
 
-<section class="card">
-    <h2>Create account</h2>
+    <section class="auth-form">
+        <ol class="stepper" aria-label="Setup progress">
+            <li class="current"><span class="dot">1</span>Account</li>
+            <li><span class="dot">2</span>Authenticator</li>
+            <li><span class="dot">3</span>Vault</li>
+        </ol>
 
-    <form method="post">
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="{{ csrf_token() }}"
-        >
+        <h1>Create your account</h1>
+        <p class="sub">This password signs you in. You'll choose a separate master passphrase for the vault later.</p>
 
-        <label>
-            Username
-            <input
-                name="username"
-                required
-                minlength="3"
-            >
-        </label>
+        <form method="post" data-loading>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <label>
-            Password
-            <input
-                type="password"
-                name="password"
-                required
-                minlength="12"
-            >
-        </label>
+            <div class="field">
+                <label class="field-label" for="username">Username</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-user"></use></svg>
+                    <input class="input" id="username" name="username" required minlength="3" maxlength="80"
+                           pattern="[A-Za-z0-9_.\-]{3,80}" autocomplete="username" autofocus
+                           data-live-hint="usernameHint"
+                           data-bad-hint="Use 3–80 letters, numbers, dots, dashes or underscores (no spaces).">
+                </span>
+                <div class="hint" id="usernameHint">3–80 characters: letters, numbers, . _ -</div>
+            </div>
 
-        <button type="submit">
-            Register
-        </button>
-    </form>
+            <div class="field">
+                <label class="field-label" for="password">Password</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-lock"></use></svg>
+                    <input class="input has-trail" type="password" id="password" name="password"
+                           required minlength="12" maxlength="128" autocomplete="new-password"
+                           data-strength="regMeter" data-checklist="regRules" data-caps="capsReg">
+                    <button type="button" class="trail-btn" data-toggle-password="password" aria-label="Show password">
+                        <svg class="icon"><use href="#i-eye"></use></svg>
+                    </button>
+                </span>
+                <div class="caps-warning" id="capsReg"><svg class="icon"><use href="#i-alert"></use></svg>Caps Lock is on</div>
+                <div class="meter" id="regMeter" data-score="0" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                <div class="meter-label"><span>Strength</span><span id="regMeterLabel" aria-live="polite"></span></div>
+                <ul class="checklist" id="regRules">
+                    <li data-rule="length"><svg class="icon"><use href="#i-check"></use></svg>12–128 characters (required)</li>
+                    <li data-rule="mixed"><svg class="icon"><use href="#i-check"></use></svg>Upper and lower case letters</li>
+                    <li data-rule="number"><svg class="icon"><use href="#i-check"></use></svg>At least one number</li>
+                    <li data-rule="symbol"><svg class="icon"><use href="#i-check"></use></svg>A symbol or space</li>
+                </ul>
+            </div>
 
-    <p>
-        <a href="{{ url_for('auth.login') }}">
-            Already registered?
-        </a>
-    </p>
-</section>
+            <div class="field">
+                <label class="field-label" for="confirmPassword">Confirm password</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-lock"></use></svg>
+                    <input class="input" type="password" id="confirmPassword" required
+                           autocomplete="new-password" data-match="password">
+                </span>
+                <div class="hint" id="confirmPasswordHint"></div>
+            </div>
 
+            <button type="submit" class="btn btn-block btn-lg">
+                <span class="spinner"></span>
+                <span>Create account</span>
+            </button>
+        </form>
+
+        <p class="auth-foot">
+            Already registered? <a href="{{ url_for('auth.login') }}">Sign in</a>
+        </p>
+    </section>
+</div>
 {% endblock %}

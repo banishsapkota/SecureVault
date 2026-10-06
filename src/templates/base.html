@@ -2,64 +2,80 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
-
-    <title>SecureVault</title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}SecureVault{% endblock %}</title>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head %}{% endblock %}
 </head>
 
-<body>
-    <header>
-        <h1>SecureVault</h1>
+<body class="{% block body_class %}{% endblock %}">
+    {% include "_icons.html" %}
 
-        {% if current_user.is_authenticated %}
-        <nav>
-            <a href="{{ url_for('dashboard') }}">
-                Vault
-            </a>
+    <a class="skip-link" href="#main">Skip to content</a>
 
-            {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('admin.dashboard') }}">
-                Admin
-            </a>
+    <header class="topbar">
+        <a class="brand" href="{{ url_for('index') }}">
+            <span class="brand-mark"><svg class="icon"><use href="#i-shield"></use></svg></span>
+            <span>SecureVault</span>
+        </a>
+
+        <div class="topbar-right">
+            {% if current_user.is_authenticated %}
+            <nav class="nav" aria-label="Main">
+                <a href="{{ url_for('dashboard') }}"
+                   class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}">
+                    <svg class="icon"><use href="#i-lock"></use></svg><span>Vault</span>
+                </a>
+                {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('admin.dashboard') }}"
+                   class="nav-link{% if request.endpoint == 'admin.dashboard' %} active{% endif %}">
+                    <svg class="icon"><use href="#i-activity"></use></svg><span>Admin</span>
+                </a>
+                {% endif %}
+            </nav>
             {% endif %}
 
-            <form
-                method="post"
-                action="{{ url_for('auth.logout') }}"
-                class="inline"
-            >
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token() }}"
-                >
+            <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch colour theme" title="Switch light / dark">
+                <svg class="icon show-light"><use href="#i-moon"></use></svg>
+                <svg class="icon show-dark"><use href="#i-sun"></use></svg>
+            </button>
 
-                <button type="submit">
-                    Logout
+            {% if current_user.is_authenticated %}
+            <div class="user-chip" title="Signed in as {{ current_user.username }}">
+                <span class="avatar">{{ current_user.username[:1]|upper }}</span>
+                <span class="user-meta">
+                    <span class="user-name">{{ current_user.username }}</span>
+                    <span class="user-role">{{ current_user.role }}</span>
+                </span>
+            </div>
+            <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost btn-sm" title="Sign out">
+                    <svg class="icon"><use href="#i-logout"></use></svg><span class="hide-sm">Logout</span>
                 </button>
             </form>
-        </nav>
-        {% endif %}
+            {% endif %}
+        </div>
     </header>
 
-    <main>
+    <div class="toast-region" id="toastRegion" aria-live="polite">
         {% with messages = get_flashed_messages() %}
             {% for message in messages %}
-            <div class="flash">
-                {{ message }}
+            <div class="toast toast-info flash" role="status">
+                <svg class="icon"><use href="#i-info"></use></svg>
+                <span>{{ message }}</span>
             </div>
             {% endfor %}
         {% endwith %}
+    </div>
 
+    <main id="main" class="{% block main_class %}page{% endblock %}">
         {% block content %}{% endblock %}
     </main>
+
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

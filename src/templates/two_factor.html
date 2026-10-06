@@ -1,42 +1,77 @@
 {% extends "base.html" %}
+{% block title %}Two-factor verification | SecureVault{% endblock %}
+{% block main_class %}auth-main{% endblock %}
 
 {% block content %}
+<div class="auth-shell">
+    {% include "_auth_aside.html" %}
 
-<section class="card">
-    <h2>Two-factor authentication</h2>
-    {% if qr %}
-    <p>Scan this code in your authenticator, then enter a code to finish setup.</p>
-    <img src="data:image/png;base64,{{ qr }}" alt="Authenticator setup QR code" width="240">
-    <p>Manual setup key: <code>{{ secret }}</code></p>
-    {% endif %}
+    <section class="auth-form">
+        {% if qr %}
+        <ol class="stepper" aria-label="Setup progress">
+            <li class="done"><span class="dot"><svg class="icon"><use href="#i-check"></use></svg></span>Account</li>
+            <li class="current"><span class="dot">2</span>Authenticator</li>
+            <li><span class="dot">3</span>Vault</li>
+        </ol>
 
-    <p>
-        Enter the six-digit code from your
-        authenticator application.
-    </p>
+        <h1>Connect your authenticator</h1>
+        <p class="sub">Two-factor authentication is required for every account.</p>
 
-    <form method="post">
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="{{ csrf_token() }}"
-        >
+        <div class="setup-grid">
+            <div class="qr-frame">
+                <img src="data:image/png;base64,{{ qr }}" alt="Authenticator setup QR code" width="180" height="180">
+            </div>
+            <ol class="steps">
+                <li>Open <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong> or a similar app.</li>
+                <li>Tap <strong>+</strong> and scan this QR code.</li>
+                <li>Type the 6-digit code it shows below.</li>
+            </ol>
+        </div>
 
-        <label>
-            TOTP code
-            <input
-                name="token"
-                maxlength="6"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                required
-            >
-        </label>
+        <details class="manual-key">
+            <summary>Can't scan? Enter the setup key instead</summary>
+            <div class="key-box">
+                <code id="setupKey">{{ secret }}</code>
+                <button type="button" class="tool-btn" data-copy="setupKey" data-copy-what="Setup key" aria-label="Copy setup key">
+                    <svg class="icon"><use href="#i-copy"></use></svg>
+                </button>
+            </div>
+        </details>
+        <div class="notice warn">
+            <svg class="icon"><use href="#i-alert"></use></svg>
+            <span>Never show this QR code or key on a shared screen. Anyone who has it can generate your codes.</span>
+        </div>
+        {% else %}
+        <span class="lock-hero"><svg class="icon"><use href="#i-phone"></use></svg></span>
+        <h1>Enter your 6-digit code</h1>
+        <p class="sub">Open your authenticator app and type the current code for SecureVault.</p>
+        {% endif %}
 
-        <button type="submit">
-            Verify
-        </button>
-    </form>
-</section>
+        <form method="post" data-loading>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+            <div class="field" data-otp>
+                <label class="field-label hidden" for="token">TOTP code</label>
+                <input class="input otp-native" id="token" name="token" maxlength="6" inputmode="numeric"
+                       autocomplete="one-time-code" pattern="[0-9]{6}" required aria-label="Six-digit code">
+            </div>
+
+            <div class="totp-timer" data-totp-timer>
+                <svg class="ring" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="track" cx="12" cy="12" r="10"></circle>
+                    <circle class="bar" cx="12" cy="12" r="10"></circle>
+                </svg>
+                <span>New code in <strong data-seconds>30</strong>s. Each code works only once.</span>
+            </div>
+
+            <button type="submit" class="btn btn-block btn-lg">
+                <span class="spinner"></span>
+                <span>Verify code</span>
+                <svg class="icon btn-icon"><use href="#i-shield"></use></svg>
+            </button>
+        </form>
+
+        <p class="auth-foot"><a href="{{ url_for('auth.login') }}">Start over</a></p>
+    </section>
+</div>
 {% endblock %}
