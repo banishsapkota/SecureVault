@@ -1,76 +1,172 @@
 {% extends "base.html" %}
+{% block title %}Vault | SecureVault{% endblock %}
+{% block head %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endblock %}
 
 {% block content %}
+<p id="status" class="hidden" role="status" aria-live="polite"></p>
 
-<p id="status" role="status"></p>
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<section class="card">
-    <h2>Encrypted Vault</h2>
+<!-- ============ Locked state ============ -->
+<section id="lockedView" class="lock-screen">
+    <span class="lock-hero" id="lockHero"><svg class="icon"><use href="#i-lock"></use></svg></span>
+    <h1>Your vault is locked</h1>
+    <p>Enter your master passphrase. It never leaves this browser, and there is no way to recover it if you forget it.</p>
 
-    <p>
-        Use a separate master passphrase (at least 12 characters). There is no recovery if you forget it. Vault encryption and decryption occur
-        in your browser.
-    </p>
+    <div class="card">
+        <form id="unlockForm" autocomplete="off">
+            <div class="field">
+                <label class="field-label" for="masterPassword">Master passphrase</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-key"></use></svg>
+                    <input class="input has-trail" type="password" id="masterPassword" autocomplete="off"
+                           minlength="12" data-caps="capsMaster" data-strength="masterMeter" autofocus>
+                    <button type="button" class="trail-btn" data-toggle-password="masterPassword" aria-label="Show passphrase">
+                        <svg class="icon"><use href="#i-eye"></use></svg>
+                    </button>
+                </span>
+                <div class="caps-warning" id="capsMaster"><svg class="icon"><use href="#i-alert"></use></svg>Caps Lock is on</div>
+                <div id="masterMeterWrap" class="hidden">
+                    <div class="meter" id="masterMeter" data-score="0" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                    <div class="meter-label"><span>Passphrase strength</span><span id="masterMeterLabel"></span></div>
+                </div>
+            </div>
 
-    <label>
-        Vault master password
-        <input
-            type="password"
-            id="masterPassword"
-            autocomplete="off"
-        >
-    </label>
+            <div class="field hidden" id="confirmWrap">
+                <label class="field-label" for="masterConfirm">Confirm new master passphrase</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-key"></use></svg>
+                    <input class="input" type="password" id="masterConfirm" autocomplete="off">
+                </span>
+                <div class="notice warn">
+                    <svg class="icon"><use href="#i-alert"></use></svg>
+                    <span>This is your first unlock, so this passphrase becomes your vault key. Make it different from your login password and write it down somewhere safe.</span>
+                </div>
+            </div>
 
-    <button id="unlockButton">
-        Unlock Vault
-    </button>
-
-    <button id="lockButton">
-        Lock
-    </button>
+            <button type="submit" id="unlockButton" class="btn btn-block btn-lg">
+                <span class="spinner"></span>
+                <svg class="icon btn-icon"><use href="#i-unlock"></use></svg>
+                <span id="unlockLabel">Unlock vault</span>
+            </button>
+        </form>
+    </div>
+    <p class="hint small">The key is derived in your browser with PBKDF2 (600,000 rounds), so unlocking takes a moment.</p>
 </section>
 
-<section
-    id="vaultArea"
-    class="card hidden"
->
-    <h3>Add credential</h3>
+<!-- ============ Unlocked state ============ -->
+<section id="vaultArea" class="hidden">
+    <div class="page-head">
+        <div>
+            <h1>My vault</h1>
+            <p>Everything below was decrypted in this browser. The server only stores ciphertext.</p>
+        </div>
+        <span class="status-pill" id="lockPill" title="Locks automatically when idle">
+            <span class="dot"></span>Unlocked · auto-lock in <span id="lockCountdown">5:00</span>
+        </span>
+    </div>
 
-    <label>
-        Label
-        <input id="entryLabel">
-    </label>
+    <div class="stats">
+        <div class="stat"><span class="stat-icon"><svg class="icon"><use href="#i-database"></use></svg></span>
+            <div><div class="stat-value" id="statTotal">0</div><div class="stat-label">Saved logins</div></div></div>
+        <div class="stat"><span class="stat-icon good"><svg class="icon"><use href="#i-shield"></use></svg></span>
+            <div><div class="stat-value" id="statStrong">0</div><div class="stat-label">Strong passwords</div></div></div>
+        <div class="stat"><span class="stat-icon bad"><svg class="icon"><use href="#i-alert"></use></svg></span>
+            <div><div class="stat-value" id="statWeak">0</div><div class="stat-label">Weak passwords</div></div></div>
+        <div class="stat"><span class="stat-icon warn"><svg class="icon"><use href="#i-refresh"></use></svg></span>
+            <div><div class="stat-value" id="statReused">0</div><div class="stat-label">Reused passwords</div></div></div>
+    </div>
 
-    <label>
-        Username / Email
-        <input id="entryUsername">
-    </label>
+    <div class="health" id="healthRow">
+        <strong>Vault health</strong>
+        <div class="health-bar"><div class="health-fill" id="healthFill"></div></div>
+        <span class="health-score" id="healthScore">–</span>
+    </div>
 
-    <label>
-        Password
-        <input
-            type="password"
-            id="entryPassword"
-        >
-    </label>
+    <div class="vault-toolbar">
+        <span class="input-wrap search">
+            <svg class="icon lead"><use href="#i-search"></use></svg>
+            <input class="input" type="search" id="searchInput" placeholder="Search by name or username…" aria-label="Search vault">
+        </span>
+        <button type="button" class="btn" id="newEntryButton">
+            <svg class="icon"><use href="#i-plus"></use></svg>New login
+        </button>
+        <button type="button" class="btn btn-secondary" id="lockButton">
+            <svg class="icon"><use href="#i-lock"></use></svg>Lock now
+        </button>
+    </div>
 
-    <button id="generateButton">
-        Generate Strong Password
-    </button>
+    <div id="entryList" class="entry-grid"></div>
 
-    <button id="saveButton">
-        Encrypt & Save
-    </button>
-
-    <h3>Vault Entries</h3>
-
-    <div id="entryList"></div>
+    <div id="emptyState" class="empty hidden">
+        <span class="lock-hero"><svg class="icon"><use href="#i-key"></use></svg></span>
+        <h3>Your vault is empty</h3>
+        <p>Add your first login. It will be encrypted before it's saved.</p>
+        <button type="button" class="btn" id="emptyAddButton"><svg class="icon"><use href="#i-plus"></use></svg>Add a login</button>
+    </div>
+    <div id="noMatches" class="empty hidden">
+        <h3>No matches</h3>
+        <p>Nothing in your vault matches that search.</p>
+    </div>
 </section>
 
+<!-- ============ Add credential dialog ============ -->
+<dialog id="entryDialog" class="modal" aria-labelledby="entryDialogTitle">
+    <form id="entryForm" method="dialog" autocomplete="off">
+        <div class="modal-head">
+            <h2 id="entryDialogTitle"><svg class="icon"><use href="#i-plus"></use></svg>New login</h2>
+            <button type="button" class="tool-btn" id="closeDialog" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label class="field-label" for="entryLabel">Name <span class="muted small">required</span></label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-database"></use></svg>
+                    <input class="input" id="entryLabel" placeholder="e.g. University portal" maxlength="200">
+                </span>
+            </div>
+            <div class="field">
+                <label class="field-label" for="entryUsername">Username or email</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-user"></use></svg>
+                    <input class="input" id="entryUsername" placeholder="e.g. demo@example.com" maxlength="500">
+                </span>
+            </div>
+            <div class="field">
+                <label class="field-label" for="entryPassword">Password <span class="muted small">required</span></label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-lock"></use></svg>
+                    <input class="input has-trail" type="password" id="entryPassword" maxlength="1000" data-strength="entryMeter">
+                    <button type="button" class="trail-btn" data-toggle-password="entryPassword" aria-label="Show password">
+                        <svg class="icon"><use href="#i-eye"></use></svg>
+                    </button>
+                </span>
+                <div class="meter" id="entryMeter" data-score="0" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                <div class="meter-label"><span>Strength</span><span id="entryMeterLabel"></span></div>
 
+                <div class="generator">
+                    <div class="generator-title"><svg class="icon"><use href="#i-sparkle"></use></svg>Password generator</div>
+                    <div class="generator-row">
+                        <label class="grow small" for="genLength">Length: <strong id="genLengthValue">20</strong>
+                            <input type="range" id="genLength" min="12" max="64" value="20">
+                        </label>
+                        <label class="check-row"><input type="checkbox" id="genSymbols" checked> Symbols</label>
+                        <button type="button" class="btn btn-secondary btn-sm" id="generateButton">
+                            <svg class="icon"><use href="#i-refresh"></use></svg>Generate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-secondary" id="cancelDialog">Cancel</button>
+            <button type="submit" class="btn" id="saveButton">
+                <span class="spinner"></span>
+                <svg class="icon btn-icon"><use href="#i-lock"></use></svg>Encrypt &amp; save
+            </button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
 
-<script
-    src="{{ url_for('static', filename='js/vault.js') }}"
-></script>
-
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/vault.js') }}"></script>
 {% endblock %}

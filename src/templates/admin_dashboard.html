@@ -1,58 +1,141 @@
 {% extends 'base.html' %}
-{% block title %}Admin Dashboard | SecureVault{% endblock %}
+{% block title %}Admin | SecureVault{% endblock %}
+
 {% block content %}
-<div class="card p-4">
-    <h2>Administrative Dashboard</h2>
-    <div class="row g-3 mt-2">
-        <div class="col-md-6">
-            <h4>Users</h4>
+{% set event_info = {
+    'login_success': ('Signed in', 'auth', 'success'),
+    'logout': ('Signed out', 'auth', 'info'),
+    'registration': ('Account created', 'auth', 'primary'),
+    'login_failure': ('Wrong password', 'failure', 'danger'),
+    '2fa_failure': ('Wrong 2FA code', 'failure', 'danger'),
+    'vault_initialized': ('Vault created', 'vault', 'primary'),
+    'vault_created': ('Login added', 'vault', 'info'),
+    'vault_deleted': ('Login deleted', 'vault', 'warning'),
+    'administrative_action': ('Admin action', 'admin', 'warning'),
+} %}
+{% set names = {} %}
+{% for u in users %}{% set _ = names.update({u.id: u.username}) %}{% endfor %}
+{% set admins = users|selectattr('role', 'equalto', 'admin')|list|length %}
+{% set locked = users|rejectattr('is_active')|list|length %}
+{% set failures = logs|selectattr('event_type', 'in', ['login_failure', '2fa_failure'])|list|length %}
+
+<div class="page-head">
+    <div>
+        <h1>Admin dashboard</h1>
+        <p>Accounts and security events. Admins can see activity, but never the contents of anyone's vault.</p>
+    </div>
+    <span class="badge primary"><svg class="icon"><use href="#i-shield"></use></svg>Zero-knowledge: vault data is not visible here</span>
+</div>
+
+<div class="stats">
+    <div class="stat"><span class="stat-icon"><svg class="icon"><use href="#i-users"></use></svg></span>
+        <div><div class="stat-value">{{ users|length }}</div><div class="stat-label">Registered users</div></div></div>
+    <div class="stat"><span class="stat-icon good"><svg class="icon"><use href="#i-shield"></use></svg></span>
+        <div><div class="stat-value">{{ admins }}</div><div class="stat-label">Administrators</div></div></div>
+    <div class="stat"><span class="stat-icon warn"><svg class="icon"><use href="#i-lock"></use></svg></span>
+        <div><div class="stat-value">{{ locked }}</div><div class="stat-label">Locked right now</div></div></div>
+    <div class="stat"><span class="stat-icon bad"><svg class="icon"><use href="#i-alert"></use></svg></span>
+        <div><div class="stat-value">{{ failures }}</div><div class="stat-label">Failed sign-ins (recent)</div></div></div>
+</div>
+
+<div class="admin-grid">
+    <section class="card">
+        <h2 class="card-title"><svg class="icon"><use href="#i-users"></use></svg>Users</h2>
+        <div class="table-wrap">
             <table class="table">
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>User</th><th>Role</th><th>Status</th><th>2FA</th><th><span class="hidden">Action</span></th></tr></thead>
                 <tbody>
-                    {% for user in users %}
+                {% for user in users %}
                     <tr>
-                        <td>{{ user.username }}</td>
-                        <td>{{ user.role }}</td>
-                        <td>{% if user.locked_until %}Locked{% else %}Active{% endif %}</td>
+                        <td><span class="cell-user"><span class="avatar">{{ user.username[:1]|upper }}</span>{{ user.username }}</span></td>
+                        <td><span class="badge {{ 'primary' if user.role == 'admin' else '' }}">{{ user.role }}</span></td>
                         <td>
-                            <form method="post" action="{{ url_for('admin.lock_user', user_id=user.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                                <button type="submit" class="btn btn-sm btn-warning">Lock</button>
+                            {% if user.is_active %}<span class="badge success">Active</span>
+                            {% else %}<span class="badge danger">Locked</span>{% endif %}
+                        </td>
+                        <td>{% if user.two_factor_enabled %}<span class="badge success">On</span>{% else %}<span class="badge warning">Pending</span>{% endif %}</td>
+                        <td>
+                            {% if user.id == current_user.id %}
+                                <span class="muted small">You</span>
+                            {% else %}
+                            <form method="post" action="{{ url_for('admin.lock_user', user_id=user.id) }}" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Confirm lock">
+                                    <svg class="icon"><use href="#i-lock"></use></svg>Lock 15 min
+                                </button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         </div>
-        <div class="col-md-6">
-            <h4>Audit Log</h4>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Event</th>
-                        <th>Details</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for log in logs %}
-                    <tr>
-                        <td>{{ log.event_type }}</td>
-                        <td>{{ log.details }}</td>
-                        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    </section>
+
+    <section class="card">
+        <h2 class="card-title"><svg class="icon"><use href="#i-activity"></use></svg>Activity breakdown</h2>
+        {% set ns = namespace(rows=[], max=1) %}
+        {% for g in logs|groupby('event_type') %}
+            {% set ns.rows = ns.rows + [(g.list|length, g.grouper)] %}
+            {% if g.list|length > ns.max %}{% set ns.max = g.list|length %}{% endif %}
+        {% endfor %}
+        {% if logs %}
+        <div class="bars">
+            {% for count, name in ns.rows|sort(reverse=True) %}
+            {% set info = event_info.get(name, (name, 'other', '')) %}
+            <div class="bar-row {{ 'danger' if info[1] == 'failure' else info[1] }}">
+                <span>{{ info[0] }}</span>
+                <svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                    <rect class="bar-bg" x="0" y="0" width="100" height="10" rx="5"></rect>
+                    <rect class="bar-fg" x="0" y="0" width="{{ (count / ns.max * 100)|round(1) }}" height="10" rx="5"></rect>
+                </svg>
+                <span class="count">{{ count }}</span>
+            </div>
+            {% endfor %}
         </div>
-    </div>
+        <p class="hint small">Based on the latest {{ logs|length }} audit events.</p>
+        {% else %}
+        <p class="muted">No activity recorded yet.</p>
+        {% endif %}
+    </section>
 </div>
+
+<section class="card">
+    <h2 class="card-title"><svg class="icon"><use href="#i-clock"></use></svg>Audit log</h2>
+    <div class="log-tools">
+        <div class="chips" role="group" aria-label="Filter events">
+            <button type="button" class="chip active" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-filter="auth" aria-pressed="false">Sign-ins</button>
+            <button type="button" class="chip" data-filter="failure" aria-pressed="false">Failures</button>
+            <button type="button" class="chip" data-filter="vault" aria-pressed="false">Vault</button>
+            <button type="button" class="chip" data-filter="admin" aria-pressed="false">Admin</button>
+        </div>
+        <span class="input-wrap">
+            <svg class="icon lead"><use href="#i-search"></use></svg>
+            <input class="input" type="search" id="logSearch" placeholder="Search events…" aria-label="Search audit log">
+        </span>
+    </div>
+    <div class="table-wrap">
+        <table class="table" id="auditTable">
+            <thead><tr><th>Event</th><th>User</th><th>Details</th><th>IP address</th><th>Time (UTC)</th></tr></thead>
+            <tbody>
+            {% for log in logs %}
+                {% set info = event_info.get(log.event_type, (log.event_type, 'other', '')) %}
+                <tr data-category="{{ info[1] }}">
+                    <td>
+                        <span class="badge {{ info[2] }}">{{ info[0] }}</span>
+                        <span class="event-code">{{ log.event_type }}</span>
+                    </td>
+                    <td>{{ names.get(log.user_id, '—') }}</td>
+                    <td class="mono small">{{ log.details or '—' }}</td>
+                    <td class="mono small">{{ log.ip_address or '—' }}</td>
+                    <td class="time">{{ log.created_at.strftime('%d %b %Y, %H:%M:%S') }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p id="auditEmpty" class="muted {{ '' if not logs else 'hidden' }}">No events match this filter.</p>
+    </div>
+</section>
 {% endblock %}

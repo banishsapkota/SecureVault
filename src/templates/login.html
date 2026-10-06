@@ -1,47 +1,51 @@
 {% extends "base.html" %}
+{% block title %}Sign in | SecureVault{% endblock %}
+{% block main_class %}auth-main{% endblock %}
 
 {% block content %}
+<div class="auth-shell">
+    {% include "_auth_aside.html" %}
 
-<section class="card">
-    <h2>Secure login</h2>
+    <section class="auth-form">
+        <h1>Welcome back</h1>
+        <p class="sub">Sign in with your account password. We'll ask for your authenticator code next.</p>
 
-    <form
-        method="post"
-        action="{{ url_for('auth.login') }}"
-    >
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="{{ csrf_token() }}"
-        >
+        <form method="post" action="{{ url_for('auth.login') }}" data-loading>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <label>
-            Username
-            <input
-                name="username"
-                required
-            >
-        </label>
+            <label class="field" for="username">
+                <span class="field-label">Username</span>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-user"></use></svg>
+                    <input class="input" id="username" name="username" autocomplete="username" required autofocus>
+                </span>
+            </label>
 
-        <label>
-            Password
-            <input
-                type="password"
-                name="password"
-                required
-            >
-        </label>
+            <div class="field">
+                <label class="field-label" for="password">Password</label>
+                <span class="input-wrap">
+                    <svg class="icon lead"><use href="#i-lock"></use></svg>
+                    <input class="input has-trail" type="password" id="password" name="password"
+                           autocomplete="current-password" required data-caps="capsLogin">
+                    <button type="button" class="trail-btn" data-toggle-password="password" aria-label="Show password">
+                        <svg class="icon"><use href="#i-eye"></use></svg>
+                    </button>
+                </span>
+                <div class="caps-warning" id="capsLogin"><svg class="icon"><use href="#i-alert"></use></svg>Caps Lock is on</div>
+            </div>
 
-        <button type="submit">
-            Continue
-        </button>
-    </form>
+            <button type="submit" class="btn btn-block btn-lg">
+                <span class="spinner"></span>
+                <span>Continue</span>
+                <svg class="icon btn-icon"><use href="#i-logout"></use></svg>
+            </button>
+        </form>
 
-    <p>
-        <a href="{{ url_for('auth.register') }}">
-            Create an account
-        </a>
-    </p>
-</section>
+        <p class="hint small">For your safety, 5 wrong attempts lock the account for 15 minutes.</p>
 
+        <p class="auth-foot">
+            New to SecureVault? <a href="{{ url_for('auth.register') }}">Create an account</a>
+        </p>
+    </section>
+</div>
 {% endblock %}
