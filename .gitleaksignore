@@ -1,0 +1,6 @@
+# Known false positives (reviewed).
+# The dummy example key 00112233...eeff appeared in .env.example and README.md in an early
+# commit. It was a placeholder, never a real secret, and the server-side AES key was removed
+# when encryption moved to the browser.
+c6cafa3302d7748d4cc62ed464b73435f9dc2bef:.env.example:generic-api-key:5
+c6cafa3302d7748d4cc62ed464b73435f9dc2bef:README.md:generic-api-key:95

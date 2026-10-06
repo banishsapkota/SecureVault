@@ -25,7 +25,7 @@ jobs:
       - name: Startup validation
         env:
           SECRET_KEY: ci-ephemeral-startup-key-not-used-in-deployment
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: 'sqlite:///:memory:'
         run: python -m flask --app src.app init-db
       - name: Secret scanning
         uses: gitleaks/gitleaks-action@v2
